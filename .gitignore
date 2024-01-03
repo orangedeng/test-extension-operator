@@ -1,0 +1,14 @@
+/.dapper
+/.cache
+/bin
+/dist
+*.swp
+.idea
+./backup
+./test-extension-operator
+test-extension-operator
+/secretExamples
+test-backup-location-local/
+.DS_Store
+/backups
+/tests/hull/output

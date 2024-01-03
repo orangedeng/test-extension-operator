@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -e
+
+readonly SUPPORTED_PLATFORMS=(
+  linux/amd64
+  linux/arm64
+  darwin/amd64
+  darwin/arm64
+)
+
+source $(dirname $0)/version
+
+cd $(dirname $0)/..
+
+mkdir -p bin dist/artifacts
+if [ "$(uname)" = "Linux" ]; then
+    OTHER_LINKFLAGS="-extldflags -static -s"
+fi
+LINKFLAGS="-X github.com/orangedeng/test-extension-operator/internal/version.gitVersion=$VERSION"
+LINKFLAGS="-X github.com/orangedeng/test-extension-operator/internal/version.gitCommit=$COMMIT $LINKFLAGS"
+LINKFLAGS="-X github.com/orangedeng/test-extension-operator/internal/version.buildDate=$BUILD_DATE $LINKFLAGS"
+LINKFLAGS="-X github.com/orangedeng/test-extension-operator/internal/version.gitTreeState=$GIT_TREE_STATE $LINKFLAGS"
+LINKFLAGS="-X main.binName=$BIN_NAME $LINKFLAGS"
+
+function build() {
+    local platforms=""
+    if [ -z "${CROSS}" ]; then 
+        local os="${OS:-$(go env GOOS)}"
+        local arch="${ARCH:-$(go env GOARCH)}"
+        platforms="$os/$arch"
+    else
+        echo "crossed building" 
+        platforms=("${SUPPORTED_PLATFORMS[@]}")
+    fi
+
+  for platform in "${platforms[@]}"; do
+    echo "building ${platform}"
+
+    local os="${platform%/*}"
+    local arch="${platform#*/}"
+    local suffix=""
+    if [[ "$os" == "windows" ]]; then
+      suffix=".exe"
+    fi
+    export GOARM=
+    if [[ "$arch" == "arm" && "$os" != "windows" ]]; then
+      export GOARM=7
+    fi
+
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=0 go build \
+      -ldflags "${LINKFLAGS} ${OTHER_LINKFLAGS}" \
+      -o "bin/${platform}/${BIN_NAME}${suffix}" \
+      "./main.go"
+    cp -f "bin/${platform}/${BIN_NAME}${suffix}" "dist/artifacts/${BIN_NAME}_${os}_${arch}${suffix}"
+  done
+}
+
+build

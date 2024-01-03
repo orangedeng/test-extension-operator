@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+
+./build
+./test
+./validate
+if [ -n "${DIRTY_CHECK:-}" ]; then
+  ./validate-ci
+fi
+./package
